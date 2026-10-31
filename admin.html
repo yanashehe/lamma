@@ -2,205 +2,481 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Just Do Eat · Admin Dashboard</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>LAMMA · Tableau de Bord Admin</title>
+
+<!-- Fonts & Appwrite SDK -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<!-- SheetJS for Excel Export -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<style>
-:root{
-  --primary:#0EA5E9;--primary-dark:#0284C7;--accent:#F59E0B;
-  --bg:#F8FAFC;--card-bg:#FFFFFF;--text:#0F172A;--muted:#64748B;
-  --border:#E2E8F0;--radius:20px;--shadow:0 10px 25px -5px rgba(15,23,42,0.05);
-}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',system-ui,sans-serif;padding:20px}
-.container{max-width:1200px;margin:0 auto}
-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px}
-h1{margin:0;font-size:24px}
-.actions{display:flex;gap:10px}
-button{cursor:pointer;font:inherit}
-.btn{background:var(--primary);color:#fff;border:0;border-radius:12px;padding:10px 18px;font-weight:700;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(14,165,233,0.3);transition:.2s}
-.btn:hover{background:var(--primary-dark)}
-.btn.accent{background:var(--accent)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:20px}
-.panel{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
-.row{display:flex;justify-content:space-between;align-items:center}
-.status{padding:4px 12px;border-radius:50px;font-size:12px;font-weight:800;background:#E0F2FE;color:var(--primary-dark)}
-.receipt{background:#F8FAFC;border:1px dashed var(--border);border-radius:14px;padding:14px;font-size:13px}
-.total{display:flex;justify-content:space-between;margin-top:8px;font-weight:800;font-size:15px;border-top:1px solid var(--border);padding-top:8px}
-select.field, input.field{width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:#fff;font-weight:700}
-.empty{text-align:center;padding:50px;color:var(--muted)}
+<script src="https://cdn.jsdelivr.net/npm/appwrite@14.0.1"></script>
 
-/* Auth Lock Screen */
-.lockscreen{position:fixed;inset:0;background:var(--bg);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
-.lockcard{background:var(--card-bg);border:1px solid var(--border);border-radius:24px;padding:32px;width:min(100%,380px);box-shadow:var(--shadow);text-align:center}
+<style>
+:root {
+  --admin-bg: #151A14;
+  --card-bg: #212920;
+  --card-border: #333D2F;
+  --gold-accent: #CDA16D;
+  --cream-text: #F5EBDD;
+  --text-muted: #9AA695;
+  --green-btn: #4E6E5D;
+  --danger: #D9534F;
+  --radius: 16px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  background-color: var(--admin-bg);
+  color: var(--cream-text);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  padding-bottom: 60px;
+}
+
+/* Admin Header */
+header {
+  background: #1B221A;
+  border-bottom: 1px solid var(--card-border);
+  padding: 16px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-logo {
+  width: 40px;
+  height: 40px;
+  background: var(--gold-accent);
+  color: #151A14;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 18px;
+}
+
+.admin-title h1 { font-size: 18px; font-weight: 800; color: var(--cream-text); }
+.admin-title p { font-size: 11px; color: var(--text-muted); }
+
+/* Main Container */
+.container {
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 0 16px;
+}
+
+/* Filter & Search Toolbar */
+.toolbar {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 240px;
+  padding: 10px 14px;
+  background: #151A14;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  color: var(--cream-text);
+  font-size: 13px;
+  outline: none;
+}
+.search-input:focus { border-color: var(--gold-accent); }
+
+.filter-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.select-filter {
+  padding: 10px 14px;
+  background: #151A14;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  color: var(--cream-text);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Status Tabs Bar */
+.status-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.status-tab {
+  padding: 8px 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: 0.2s;
+}
+
+.status-tab.active {
+  background: var(--gold-accent);
+  color: #151A14;
+  border-color: var(--gold-accent);
+}
+
+/* Orders List Grid */
+.orders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+/* Order Compact Card ("Facture") */
+.order-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.order-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.order-id { font-weight: 800; font-size: 15px; color: var(--gold-accent); }
+.order-total { font-weight: 800; font-size: 16px; color: var(--cream-text); }
+
+.badge {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.b-recue { background: #332B1A; color: #FFC107; border: 1px solid #FFC107; }
+.b-prep { background: #1A2E3B; color: #3498DB; border: 1px solid #3498DB; }
+.b-ready { background: #1A3B2B; color: #2ECC71; border: 1px solid #2ECC71; }
+.b-done { background: #2C2C2C; color: #A0A0A0; border: 1px solid #555; }
+
+.facture-summary {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  line-height: 1.4;
+  background: #191E18;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.client-info {
+  font-size: 12px;
+  color: var(--cream-text);
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Action Controls for Admin */
+.admin-actions {
+  display: flex;
+  gap: 6px;
+  border-top: 1px solid var(--card-border);
+  padding-top: 10px;
+}
+
+.btn-status {
+  flex: 1;
+  padding: 8px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: #191E18;
+  color: var(--cream-text);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-status:hover { border-color: var(--gold-accent); }
+.btn-status.active-action { background: var(--green-btn); border-color: var(--green-btn); color: #FFF; }
+
+.btn-delete {
+  padding: 8px 12px;
+  background: rgba(217, 83, 79, 0.15);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* Toast Notification */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--gold-accent);
+  color: #151A14;
+  padding: 10px 20px;
+  border-radius: 30px;
+  font-weight: 800;
+  font-size: 13px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+  z-index: 1000;
+  transition: transform 0.3s ease-in-out;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
 
-<!-- Lock Screen Overlay -->
-<div id="lockscreen" class="lockscreen">
-  <div class="lockcard">
-    <div style="font-size:40px;margin-bottom:12px">🔒</div>
-    <h2 style="margin:0 0 6px">Accès Administrateur</h2>
-    <p style="font-size:13px;color:var(--muted);margin:0 0 20px">Entrez le code secret pour afficher les commandes.</p>
-    <input type="password" id="passcode" class="field" placeholder="Code secret" style="text-align:center;font-size:16px;letter-spacing:2px;margin-bottom:14px">
-    <button class="btn full" onclick="checkAuth()" style="width:100%;justify-content:center;padding:12px">Se connecter</button>
-    <p id="autherror" style="color:#EF4444;font-size:12px;font-weight:700;margin-top:12px;display:none">Code incorrect !</p>
-  </div>
-</div>
+<div id="toast"></div>
 
-<div class="container" id="adminContent" style="display:none">
-  <header>
-    <div>
-      <h1>Just Do Eat · Admin Dashboard</h1>
-      <span style="font-size:13px;color:var(--muted)">Gestion des commandes en temps réel</span>
+<!-- Admin Header -->
+<header>
+  <div class="header-container">
+    <div class="admin-brand">
+      <div class="admin-logo">L</div>
+      <div class="admin-title">
+        <h1>LAMMA Admin</h1>
+        <p>Gestion de Cuisine & Factures</p>
+      </div>
     </div>
-    <div class="actions">
-      <button class="btn accent" onclick="exportExcel()">📊 Exporter vers Excel</button>
-      <button class="btn" onclick="loadOrders()">🔄 Actualiser</button>
-      <button class="btn" onclick="logout()" style="background:#EF4444;box-shadow:none">Déconnexion</button>
-    </div>
-  </header>
-
-  <div id="ordersContainer" class="grid">
-    <div class="empty">Chargement des commandes...</div>
+    <div id="liveCount" style="font-size: 12px; font-weight: 700; color: var(--gold-accent);">Chargement...</div>
   </div>
+</header>
+
+<div class="container">
+
+  <!-- Toolbar: Search & Filters -->
+  <div class="toolbar">
+    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Rechercher par nom, téléphone ou code..." onkeyup="filterAndRenderOrders()">
+    
+    <div class="filter-group">
+      <select id="sortFilter" class="select-filter" onchange="filterAndRenderOrders()">
+        <option value="newest">🕒 Plus Récentes</option>
+        <option value="oldest">⏱️ Plus Anciennes</option>
+        <option value="price-desc">💰 Prix: Décroissant</option>
+        <option value="price-asc">🪙 Prix: Croissant</option>
+        <option value="name-asc">🔤 Nom (A-Z)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Status Tabs Filter -->
+  <div class="status-tabs">
+    <button class="status-tab active" onclick="setStatusTab('all', this)">📋 Toutes</button>
+    <button class="status-tab" onclick="setStatusTab('Reçue', this)">📥 Reçue</button>
+    <button class="status-tab" onclick="setStatusTab('En préparation', this)">👨‍🍳 En préparation</button>
+    <button class="status-tab" onclick="setStatusTab('Prête', this)">🔔 Prête</button>
+    <button class="status-tab" onclick="setStatusTab('Servie', this)">✅ Servie</button>
+  </div>
+
+  <!-- Orders Grid ("Factures") -->
+  <div id="adminOrdersContainer" class="orders-grid">
+    <p style="color:var(--text-muted); text-align:center; grid-column:1/-1; padding:40px 0;">Chargement des commandes...</p>
+  </div>
+
 </div>
 
 <script>
-const ADMIN_PASSWORD = "tajinedl7ot";
+const { Client, Databases } = Appwrite;
+const client = new Client()
+    .setEndpoint('https://fra.cloud.appwrite.io/v1')
+    .setProject('6ad3bbf5001b729738c7');
 
-const APPWRITE = {
-  endpoint: 'https://fra.cloud.appwrite.io/v1',
-  project: '6ad3bbf5001b729738c7',     
-  database: '6ad3bc4600163851b006',   
-  collection: '6ad3bcdf001ebfbb1714'            
-};
+const databases = new Databases(client);
+
+const DB_ID = '6ad3bc4600163851b006';
+const ORDERS_COLLECTION = '6ad3bcdf001ebfbb1714';
 
 let allOrders = [];
+let currentStatusFilter = 'all';
 
-function checkAuth(){
-  const input = document.getElementById('passcode').value.trim();
-  
-  if(input === ADMIN_PASSWORD || sessionStorage.getItem('admin_authed') === 'true'){
-    sessionStorage.setItem('admin_authed', 'true');
-    document.getElementById('lockscreen').style.display = 'none';
-    document.getElementById('adminContent').style.display = 'block';
-    document.getElementById('autherror').style.display = 'none';
-    loadOrders();
-  } else {
-    document.getElementById('autherror').style.display = 'block';
-  }
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  toast.innerText = message;
+  toast.classList.add('show');
+  setTimeout(() => { toast.classList.remove('show'); }, 3000);
 }
 
-function logout(){
-  sessionStorage.removeItem('admin_authed');
-  location.reload();
-}
-
-document.getElementById('passcode').addEventListener('keyup', function(e){
-  if(e.key === 'Enter') checkAuth();
-});
-
-if(sessionStorage.getItem('admin_authed') === 'true'){
-  checkAuth();
-}
-
-async function aw(method, path, body){
-  const headers = {'X-Appwrite-Project': APPWRITE.project, 'Content-Type': 'application/json'};
-  const r = await fetch(APPWRITE.endpoint + path, {method, headers, body: body ? JSON.stringify(body) : undefined});
-  if (r.status === 204) return {};
-  const j = await r.json().catch(function(){return {}});
-  if (!r.ok) throw new Error(j.message || ('Erreur ' + r.status));
-  return j;
-}
-
-async function loadOrders(){
-  const container = document.getElementById('ordersContainer');
-  container.innerHTML = '<div class="empty">Chargement...</div>';
+// Fetch Orders on Load & Auto Poll every 10s
+async function fetchAdminOrders() {
   try {
-    const res = await aw('GET', '/databases/' + APPWRITE.database + '/collections/' + APPWRITE.collection + '/documents');
-    allOrders = res.documents || [];
-    renderOrders();
-  } catch(e) {
-    container.innerHTML = '<div class="empty" style="color:red">Erreur : ' + e.message + '</div>';
+    const res = await databases.listDocuments(DB_ID, ORDERS_COLLECTION);
+    allOrders = res.documents;
+    filterAndRenderOrders();
+  } catch (error) {
+    console.error("Fetch Admin Orders Error:", error);
+    document.getElementById('adminOrdersContainer').innerHTML = `<p style="color:var(--danger); text-align:center; grid-column:1/-1;">Erreur de connexion Appwrite.</p>`;
   }
 }
 
-async function updateStatus(docId, newStatus){
-  try {
-    await aw('PATCH', '/databases/' + APPWRITE.database + '/collections/' + APPWRITE.collection + '/documents/' + docId, {
-      data: { status: newStatus }
-    });
-    loadOrders();
-  } catch(e) {
-    alert('Erreur lors de la mise à jour : ' + e.message);
-  }
+// Tab Filter Selection
+function setStatusTab(status, element) {
+  document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+  element.classList.add('active');
+  currentStatusFilter = status;
+  filterAndRenderOrders();
 }
 
-function renderOrders(){
-  const container = document.getElementById('ordersContainer');
-  if(!allOrders.length){
-    container.innerHTML = '<div class="empty">Aucune commande trouvée.</div>';
+// Filter & Sort Logic
+function filterAndRenderOrders() {
+  const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+  const sortOption = document.getElementById('sortFilter').value;
+
+  let filtered = allOrders.filter(ord => {
+    // Status match
+    const statusVal = ord.status || 'Reçue';
+    const matchesTab = (currentStatusFilter === 'all') || 
+                       (currentStatusFilter === 'Reçue' && statusVal.includes('Reçue')) ||
+                       (currentStatusFilter === 'En préparation' && statusVal.includes('préparation')) ||
+                       (currentStatusFilter === 'Prête' && statusVal.includes('Prête')) ||
+                       (currentStatusFilter === 'Servie' && (statusVal.includes('Servie') || statusVal.includes('Terminée')));
+
+    // Search query match (Name, phone, code, or oid)
+    const matchesSearch = !searchQuery || 
+      (ord.name && ord.name.toLowerCase().includes(searchQuery)) ||
+      (ord.phone && ord.phone.toLowerCase().includes(searchQuery)) ||
+      (ord.code && ord.code.toLowerCase().includes(searchQuery)) ||
+      (ord.oid && ord.oid.toLowerCase().includes(searchQuery));
+
+    return matchesTab && matchesSearch;
+  });
+
+  // Sorting
+  filtered.sort((a, b) => {
+    if (sortOption === 'newest') return new Date(b.$createdAt) - new Date(a.$createdAt);
+    if (sortOption === 'oldest') return new Date(a.$createdAt) - new Date(b.$createdAt);
+    if (sortOption === 'price-desc') return (b.total || 0) - (a.total || 0);
+    if (sortOption === 'price-asc') return (a.total || 0) - (b.total || 0);
+    if (sortOption === 'name-asc') return (a.name || '').localeCompare(b.name || '');
+    return 0;
+  });
+
+  renderOrders(filtered);
+}
+
+// Render Factures Grid
+function renderOrders(orders) {
+  const container = document.getElementById('adminOrdersContainer');
+  document.getElementById('liveCount').innerText = `${orders.length} facture(s) affichée(s)`;
+
+  if (!orders.length) {
+    container.innerHTML = `<p style="color:var(--text-muted); text-align:center; grid-column:1/-1; padding:40px 0;">Aucune commande trouvée.</p>`;
     return;
   }
 
-  container.innerHTML = allOrders.map(function(doc){
-    let itemsParsed = [];
-    try { itemsParsed = JSON.parse(doc.items || '[]'); } catch(err){}
-    
-    return '<div class="panel">' +
-      '<div class="row"><b>#' + (doc.oid || doc.$id.slice(0,6)) + '</b><span class="status">' + doc.status + '</span></div>' +
-      '<div>Client : <b>' + doc.name + '</b><br>Tél : <b>' + doc.phone + '</b><br>Créneau : <b>' + (doc.slot || 'N/A') + '</b><br>Code : <b style="color:var(--primary);font-size:16px">' + doc.code + '</b></div>' +
-      '<div class="receipt">' +
-        itemsParsed.map(function(i){
-          const extrasStr = i.extras && i.extras.length ? ' (' + i.extras.map(e=>e.name).join(', ') + ')' : '';
-          return '<div style="display:flex;justify-content:space-between"><span>' + i.qty + 'x ' + i.id + extrasStr + '</span><b>' + (i.unit * i.qty) + ' DH</b></div>';
-        }).join('') +
-        '<div class="total"><span>Total</span><span>' + doc.total + ' DH</span></div>' +
-      '</div>' +
-      '<div><label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px">Changer le statut :</label>' +
-      '<select class="field" onchange="updateStatus(\'' + doc.$id + '\', this.value)">' +
-        ['Reçue', 'En préparation', 'Prête', 'Récupérée'].map(s => '<option value="' + s + '" ' + (doc.status === s ? 'selected' : '') + '>' + s + '</option>').join('') +
-      '</select></div>' +
-    '</div>';
+  container.innerHTML = orders.map(ord => {
+    let parsedItems = [];
+    try { parsedItems = JSON.parse(ord.items); } catch(e){}
+    const itemsSummary = parsedItems.map(it => `${it.qty}x ${it.id}`).join(', ') || 'Plats divers';
+
+    let statusVal = ord.status || 'Reçue';
+    let badgeClass = 'b-recue';
+    if (statusVal.includes('préparation')) badgeClass = 'b-prep';
+    else if (statusVal.includes('Prête')) badgeClass = 'b-ready';
+    else if (statusVal.includes('Servie') || statusVal.includes('Terminée')) badgeClass = 'b-done';
+
+    return `
+      <div class="order-card">
+        <div>
+          <div class="order-top">
+            <span class="order-id">#${ord.oid} · Code: <strong style="color:var(--gold-accent)">${ord.code}</strong></span>
+            <span class="badge ${badgeClass}">${statusVal}</span>
+          </div>
+
+          <div class="client-info">
+            <span>👤 <strong>${ord.name}</strong></span>
+            <span>📞 ${ord.phone}</span>
+          </div>
+
+          <div class="facture-summary">
+            🛒 ${itemsSummary}
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <span style="font-size:12px; color:var(--text-muted);">Montant total:</span>
+            <span class="order-total">${ord.total} DH</span>
+          </div>
+
+          <div class="admin-actions">
+            <button class="btn-status ${statusVal.includes('Reçue') ? 'active-action' : ''}" onclick="updateStatus('${ord.$id}', 'Reçue')">Reçue</button>
+            <button class="btn-status ${statusVal.includes('préparation') ? 'active-action' : ''}" onclick="updateStatus('${ord.$id}', 'En préparation')">Cuisine</button>
+            <button class="btn-status ${statusVal.includes('Prête') ? 'active-action' : ''}" onclick="updateStatus('${ord.$id}', 'Prête')">Prête</button>
+            <button class="btn-status ${statusVal.includes('Servie') ? 'active-action' : ''}" onclick="updateStatus('${ord.$id}', 'Servie')">Servie</button>
+            <button class="btn-delete" onclick="deleteOrder('${ord.$id}')">🗑️</button>
+          </div>
+        </div>
+      </div>
+    `;
   }).join('');
 }
 
-function exportExcel(){
-  if(!allOrders.length){ alert('Aucune donnée à exporter'); return; }
-  
-  let flatRows = [];
-  allOrders.forEach(doc => {
-    let items = [];
-    try { items = JSON.parse(doc.items || '[]'); } catch(e){}
-    items.forEach(i => {
-      flatRows.push({
-        "ID Commande": doc.oid || doc.$id,
-        "Code Retrait": doc.code,
-        "Client": doc.name,
-        "Téléphone": doc.phone,
-        "Plat ID": i.id,
-        "Quantité": i.qty,
-        "Extras": i.extras ? i.extras.map(e => e.name).join(', ') : '',
-        "Prix Unitaire (DH)": i.unit,
-        "Total Ligne (DH)": i.unit * i.qty,
-        "Créneau": doc.slot,
-        "Statut": doc.status,
-        "Date": new Date(doc.$createdAt).toLocaleString('fr-FR')
-      });
-    });
-  });
-
-  const worksheet = XLSX.utils.json_to_sheet(flatRows);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Commandes");
-  XLSX.writeFile(workbook, "JustDoEat_Commandes.xlsx");
+// Update Order Status in Appwrite
+async function updateStatus(docId, newStatus) {
+  try {
+    await databases.updateDocument(DB_ID, ORDERS_COLLECTION, docId, { status: newStatus });
+    showToast(`✅ Statut mis à jour : ${newStatus}`);
+    fetchAdminOrders();
+  } catch (error) {
+    showToast("❌ Erreur de mise à jour");
+  }
 }
+
+// Delete Order Record
+async function deleteOrder(docId) {
+  if (!confirm("Voulez-vous supprimer définitivement cette facture ?")) return;
+  try {
+    await databases.deleteDocument(DB_ID, ORDERS_COLLECTION, docId);
+    showToast("🗑️ Facture supprimée");
+    fetchAdminOrders();
+  } catch (error) {
+    showToast("❌ Permission refusée ou erreur");
+  }
+}
+
+// Run initial fetch and poll every 10 seconds
+fetchAdminOrders();
+setInterval(fetchAdminOrders, 10000);
 </script>
 </body>
 </html>
