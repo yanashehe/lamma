@@ -380,7 +380,7 @@ const ORDERS_COLLECTION = '6ad3bcdf001ebfbb1714';
 
 let cart = [];
 let autoRefreshTimer = null;
-let editingDocId = null; // Stores Document ID if student is modifying an order
+let editingDocId = null;
 
 function showToast(message) {
   const toast = document.getElementById('toast');
@@ -486,10 +486,12 @@ async function placeOrder() {
     return;
   }
 
+  // Save phone to this device so only this phone's orders are displayed
+  localStorage.setItem('lamma_user_phone', cleanPhone);
+
   const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
 
   if (editingDocId) {
-    // Update Existing Document
     const updatePayload = {
       name: name,
       phone: `${cleanPhone} (${slot})`,
@@ -511,7 +513,6 @@ async function placeOrder() {
     }
 
   } else {
-    // Create New Order Document
     const pickupCode = Math.floor(1000 + Math.random() * 9000).toString();
     const orderPayload = {
       oid: 'L' + Date.now().toString().slice(-5),
@@ -538,8 +539,6 @@ async function placeOrder() {
 // Edit Order (Allowed when status is "Reçue")
 function editOrder(docId, name, phoneRaw, itemsJson) {
   editingDocId = docId;
-  
-  // Clean phone input and slot parsing
   const cleanPhone = phoneRaw.split(' ')[0];
   document.getElementById('orderName').value = name;
   document.getElementById('orderPhone').value = cleanPhone;
@@ -557,7 +556,7 @@ function editOrder(docId, name, phoneRaw, itemsJson) {
   showToast("Vous pouvez maintenant modifier vos articles.");
 }
 
-// Cancel Order (Allowed when status is "Reçue" or "En préparation")
+// Cancel Order (Allowed ONLY when status is "Reçue")
 async function cancelOrder(docId) {
   if (!confirm("Voulez-vous vraiment annuler cette commande ?")) return;
 
@@ -570,19 +569,28 @@ async function cancelOrder(docId) {
   }
 }
 
-// Fetch Orders & Render Dynamic Action Buttons
+// Fetch Orders & Filter by Device Phone Number
 async function fetchOrders() {
   const container = document.getElementById('ordersContainer');
+  const userPhone = localStorage.getItem('lamma_user_phone');
+
+  if (!userPhone) {
+    container.innerHTML = `<p style="color:#666; text-align:center; padding:30px 0; font-size:14px">Aucune commande trouvée sur cet appareil.<br>Passez une commande pour voir son suivi ici.</p>`;
+    return;
+  }
   
   try {
     const res = await databases.listDocuments(DB_ID, ORDERS_COLLECTION);
     
-    if(!res.documents.length) {
-      container.innerHTML = `<p style="color:#666; text-align:center; padding:30px 0; font-size:14px">Aucune commande enregistrée pour l'instant.</p>`;
+    // Filter orders to ONLY match the phone number stored on this device
+    const orders = res.documents
+      .filter(ord => ord.phone && ord.phone.includes(userPhone))
+      .sort((a,b) => new Date(b.$createdAt) - new Date(a.$createdAt));
+
+    if(!orders.length) {
+      container.innerHTML = `<p style="color:#666; text-align:center; padding:30px 0; font-size:14px">Aucune commande enregistrée pour votre numéro sur cet appareil.</p>`;
       return;
     }
-
-    const orders = res.documents.sort((a,b) => new Date(b.$createdAt) - new Date(a.$createdAt));
 
     container.innerHTML = orders.map(ord => {
       let parsedItems = [];
@@ -600,14 +608,14 @@ async function fetchOrders() {
         statusClass = 'status-prep';
         progressPercent = 66;
         statusLabel = 'En préparation 👨‍🍳';
-        canEdit = false;  // CANNOT edit while cooking
-        canCancel = true; // CAN still cancel
+        canEdit = false;  
+        canCancel = false; // LOCKED: Cannot cancel once in kitchen!
       } else if (statusLabel.includes('Prête') || statusLabel.includes('Prêt')) {
         statusClass = 'status-ready';
         progressPercent = 100;
         statusLabel = 'Prête à retirer ! 🎉';
         canEdit = false;
-        canCancel = false; // Cannot cancel ready orders
+        canCancel = false; // LOCKED: Cannot cancel ready orders
       } else if (statusLabel.includes('LIVRE') || statusLabel.includes('Servie')) {
         statusClass = 'status-completed';
         progressPercent = 100;
@@ -616,11 +624,10 @@ async function fetchOrders() {
         canCancel = false;
       } else {
         statusLabel = 'Reçue en cuisine ⏳';
-        canEdit = true;   // CAN edit when just received
-        canCancel = true; // CAN cancel when just received
+        canEdit = true;   // Allowed to edit
+        canCancel = true; // Allowed to cancel only while "Reçue"
       }
 
-      // Safe string escaping for click parameters
       const safeName = ord.name.replace(/'/g, "\\'");
       const safePhone = ord.phone.replace(/'/g, "\\'");
       const safeItems = JSON.stringify(ord.items).replace(/"/g, '&quot;');
