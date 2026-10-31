@@ -21,6 +21,8 @@
   --white: #FFFFFF;
   --shadow: 0 8px 24px rgba(83, 107, 80, 0.12);
   --radius: 20px;
+  --danger: #D9534F;
+  --warning: #E07A5F;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -200,6 +202,11 @@ header {
 .order-details { font-size: 13px; color: #556052; margin-bottom: 8px; }
 .order-code { font-weight: 800; color: var(--gold-accent); font-size: 14px; background: rgba(205, 161, 109, 0.15); padding: 4px 8px; border-radius: 6px; display: inline-block; }
 
+/* Action Buttons for Edit/Cancel */
+.order-actions { display: flex; gap: 10px; margin-top: 14px; border-top: 1px dashed var(--cream-bg); padding-top: 12px; }
+.btn-action-edit { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid var(--warning); background: rgba(224, 122, 95, 0.1); color: var(--warning); font-weight: 700; font-size: 12px; cursor: pointer; }
+.btn-action-cancel { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid var(--danger); background: rgba(217, 83, 79, 0.1); color: var(--danger); font-weight: 700; font-size: 12px; cursor: pointer; }
+
 /* Toast Notification */
 #toast {
   position: fixed;
@@ -308,7 +315,7 @@ header {
 <!-- PAGE 2: PANIER -->
 <div id="page-panier" class="page">
   <div class="cart-card">
-    <h3 style="color:var(--green-dark); margin-bottom:16px">Récapitulatif de votre commande</h3>
+    <h3 style="color:var(--green-dark); margin-bottom:16px" id="cartFormTitle">Récapitulatif de votre commande</h3>
     
     <div id="cartItemsContainer">
       <p style="color:#666; font-size:14px; text-align:center; padding:20px 0">Votre panier est vide pour le moment.</p>
@@ -339,7 +346,7 @@ header {
         </select>
       </div>
 
-      <button class="btn-submit" onclick="placeOrder()">Confirmer & Envoyer la commande ➔</button>
+      <button class="btn-submit" id="btnSubmitOrder" onclick="placeOrder()">Confirmer & Envoyer la commande ➔</button>
     </div>
   </div>
 </div>
@@ -373,6 +380,7 @@ const ORDERS_COLLECTION = '6ad3bcdf001ebfbb1714';
 
 let cart = [];
 let autoRefreshTimer = null;
+let editingDocId = null; // Stores Document ID if student is modifying an order
 
 function showToast(message) {
   const toast = document.getElementById('toast');
@@ -460,6 +468,7 @@ function updateCartUI() {
   }
 }
 
+// Place OR Update Order
 async function placeOrder() {
   const name = document.getElementById('orderName').value.trim();
   const phoneInput = document.getElementById('orderPhone').value.trim();
@@ -478,29 +487,90 @@ async function placeOrder() {
   }
 
   const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  const pickupCode = Math.floor(1000 + Math.random() * 9000).toString();
 
-  const orderPayload = {
-    oid: 'L' + Date.now().toString().slice(-5),
-    name: name,
-    phone: `${cleanPhone} (${slot})`,
-    code: pickupCode,
-    total: total,
-    status: 'Reçue',
-    items: JSON.stringify(cart.map(item => ({ id: item.title, qty: item.qty, unit: item.price })))
-  };
+  if (editingDocId) {
+    // Update Existing Document
+    const updatePayload = {
+      name: name,
+      phone: `${cleanPhone} (${slot})`,
+      total: total,
+      items: JSON.stringify(cart.map(item => ({ id: item.title, qty: item.qty, unit: item.price })))
+    };
 
-  try {
-    await databases.createDocument(DB_ID, ORDERS_COLLECTION, ID.unique(), orderPayload);
-    cart = [];
-    updateCartUI();
-    showToast(`🎉 Commande validée ! Code : ${pickupCode}`);
-    switchPage('commandes', document.querySelectorAll('.nav-tab')[2]);
-  } catch (error) {
-    showToast("❌ Erreur: " + error.message);
+    try {
+      await databases.updateDocument(DB_ID, ORDERS_COLLECTION, editingDocId, updatePayload);
+      editingDocId = null;
+      document.getElementById('cartFormTitle').innerText = "Récapitulatif de votre commande";
+      document.getElementById('btnSubmitOrder').innerText = "Confirmer & Envoyer la commande ➔";
+      cart = [];
+      updateCartUI();
+      showToast(`✏️ Commande mise à jour avec succès !`);
+      switchPage('commandes', document.querySelectorAll('.nav-tab')[2]);
+    } catch (error) {
+      showToast("❌ Erreur de modification: " + error.message);
+    }
+
+  } else {
+    // Create New Order Document
+    const pickupCode = Math.floor(1000 + Math.random() * 9000).toString();
+    const orderPayload = {
+      oid: 'L' + Date.now().toString().slice(-5),
+      name: name,
+      phone: `${cleanPhone} (${slot})`,
+      code: pickupCode,
+      total: total,
+      status: 'Reçue',
+      items: JSON.stringify(cart.map(item => ({ id: item.title, qty: item.qty, unit: item.price })))
+    };
+
+    try {
+      await databases.createDocument(DB_ID, ORDERS_COLLECTION, ID.unique(), orderPayload);
+      cart = [];
+      updateCartUI();
+      showToast(`🎉 Commande validée ! Code : ${pickupCode}`);
+      switchPage('commandes', document.querySelectorAll('.nav-tab')[2]);
+    } catch (error) {
+      showToast("❌ Erreur: " + error.message);
+    }
   }
 }
 
+// Edit Order (Allowed when status is "Reçue")
+function editOrder(docId, name, phoneRaw, itemsJson) {
+  editingDocId = docId;
+  
+  // Clean phone input and slot parsing
+  const cleanPhone = phoneRaw.split(' ')[0];
+  document.getElementById('orderName').value = name;
+  document.getElementById('orderPhone').value = cleanPhone;
+
+  try {
+    const items = JSON.parse(itemsJson);
+    cart = items.map(it => ({ title: it.id, price: it.unit, qty: it.qty }));
+  } catch(e) { cart = []; }
+
+  document.getElementById('cartFormTitle').innerText = "✏️ Modifier ma commande";
+  document.getElementById('btnSubmitOrder').innerText = "Enregistrer la modification ➔";
+
+  updateCartUI();
+  switchPage('panier', document.querySelectorAll('.nav-tab')[1]);
+  showToast("Vous pouvez maintenant modifier vos articles.");
+}
+
+// Cancel Order (Allowed when status is "Reçue" or "En préparation")
+async function cancelOrder(docId) {
+  if (!confirm("Voulez-vous vraiment annuler cette commande ?")) return;
+
+  try {
+    await databases.deleteDocument(DB_ID, ORDERS_COLLECTION, docId);
+    showToast("❌ Commande annulée avec succès.");
+    fetchOrders();
+  } catch (error) {
+    showToast("Erreur lors de l'annulation: " + error.message);
+  }
+}
+
+// Fetch Orders & Render Dynamic Action Buttons
 async function fetchOrders() {
   const container = document.getElementById('ordersContainer');
   
@@ -523,22 +593,37 @@ async function fetchOrders() {
       let statusClass = 'status-received';
       let progressPercent = 33;
       let statusLabel = ord.status || 'Reçue';
+      let canEdit = false;
+      let canCancel = false;
 
       if (statusLabel.includes('préparation') || statusLabel.includes('En cour')) {
         statusClass = 'status-prep';
         progressPercent = 66;
         statusLabel = 'En préparation 👨‍🍳';
+        canEdit = false;  // CANNOT edit while cooking
+        canCancel = true; // CAN still cancel
       } else if (statusLabel.includes('Prête') || statusLabel.includes('Prêt')) {
         statusClass = 'status-ready';
         progressPercent = 100;
         statusLabel = 'Prête à retirer ! 🎉';
+        canEdit = false;
+        canCancel = false; // Cannot cancel ready orders
       } else if (statusLabel.includes('LIVRE') || statusLabel.includes('Servie')) {
         statusClass = 'status-completed';
         progressPercent = 100;
         statusLabel = 'Commande Terminée';
+        canEdit = false;
+        canCancel = false;
       } else {
         statusLabel = 'Reçue en cuisine ⏳';
+        canEdit = true;   // CAN edit when just received
+        canCancel = true; // CAN cancel when just received
       }
+
+      // Safe string escaping for click parameters
+      const safeName = ord.name.replace(/'/g, "\\'");
+      const safePhone = ord.phone.replace(/'/g, "\\'");
+      const safeItems = JSON.stringify(ord.items).replace(/"/g, '&quot;');
 
       return `
         <div class="order-card">
@@ -558,6 +643,13 @@ async function fetchOrders() {
             <span>Code de retrait:</span>
             <span class="order-code">${ord.code}</span>
           </div>
+
+          ${(canEdit || canCancel) ? `
+            <div class="order-actions">
+              ${canEdit ? `<button class="btn-action-edit" onclick="editOrder('${ord.$id}', '${safeName}', '${safePhone}', ${safeItems})">✏️ Modifier</button>` : ''}
+              ${canCancel ? `<button class="btn-action-cancel" onclick="cancelOrder('${ord.$id}')">❌ Annuler</button>` : ''}
+            </div>
+          ` : ''}
         </div>
       `;
     }).join('');
