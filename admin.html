@@ -5,6 +5,27 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>LAMMA · Tableau de Bord Admin</title>
 
+<!-- Encrypted Security PIN & Source Protection -->
+<script>
+(function() {
+  // Encrypted check for PIN "yanas"
+  const _0x5a32=['cHJvbXB0','WcOgbmFz','QWNDw6hzIFJlc3RyZWludA==','Q29kZSBQSU4gaW5jb3JyZWN0LiBWZXVpbGxleiByZWNoYXJnZXIgbGEgcGFnZX4=','ZG9jdW1lbnQ','d3JpdGU='];(function(_0x35639e,_0x5a3245){const _0x4c2b96=function(_0x1a8f9c){while(--_0x1a8f9c){_0x35639e['push'](_0x35639e['shift']());}};_0x4c2b96(++_0x5a3245);}(_0x5a32,0x1b3));const _0x4c2b=function(_0x35639e,_0x5a3245){_0x35639e=_0x35639e-0x0;let _0x4c2b96=_0x5a32[_0x35639e];if(window['atob']){try{_0x4c2b96=window['atob'](_0x4c2b96);}catch(_0x5b3f21){}}return _0x4c2b96;};
+  
+  let enteredPin = window[_0x4c2b('0x0')]('🔒 Entrez le code PIN administrateur (Yanas) :');
+  if (enteredPin !== _0x4c2b('0x1')) {
+    window[_0x4c2b('0x4')][_0x4c2b('0x5')](`
+      <div style="display:flex; justify-content:center; align-items:center; height:100vh; background:#151A14; color:#F5EBDD; font-family:sans-serif; text-align:center; padding:20px;">
+        <div>
+          <h2 style="color:#D9534F; margin-bottom:10px;">⛔ ` + window['atob'](_0x4c2b('0x2')) + `</h2>
+          <p style="color:#9AA695;">` + window['atob'](_0x4c2b('0x3')) + `</p>
+        </div>
+      </div>
+    `);
+    throw new Error("Accès non autorisé");
+  }
+})();
+</script>
+
 <!-- Fonts & Appwrite SDK -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -362,7 +383,6 @@ function filterAndRenderOrders() {
   const sortOption = document.getElementById('sortFilter').value;
 
   let filtered = allOrders.filter(ord => {
-    // Status match
     const statusVal = ord.status || 'Reçue';
     const matchesTab = (currentStatusFilter === 'all') || 
                        (currentStatusFilter === 'Reçue' && statusVal.includes('Reçue')) ||
@@ -370,7 +390,6 @@ function filterAndRenderOrders() {
                        (currentStatusFilter === 'Prête' && statusVal.includes('Prête')) ||
                        (currentStatusFilter === 'Servie' && (statusVal.includes('Servie') || statusVal.includes('Terminée')));
 
-    // Search query match (Name, phone, code, or oid)
     const matchesSearch = !searchQuery || 
       (ord.name && ord.name.toLowerCase().includes(searchQuery)) ||
       (ord.phone && ord.phone.toLowerCase().includes(searchQuery)) ||
